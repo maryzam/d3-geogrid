@@ -11,22 +11,32 @@
 		<script src="../build/d3-geogrid.js"></script>
 	</head>
 	<body>
-		<svg width="600", height="400"></svg>
+		<svg width="480", height="300"></svg>
 		<script type="text/javascript">
-			d3.json("russia.topo.json")
+			
+			Promise.all([
+					d3.json("data/us-10m.v1.json"),
+					d3.tsv("data/us-state-names.tsv")
+				])
 				.then(function(source) {
+					var usa = source[0];
+					var names = source[1];
 
-					var geo = topojson.feature(source, source.objects.regions).features;
+					var geo = topojson.feature(usa, usa.objects.states).features;
+					for (var i = 0; i < geo.length; i++) {
+						var stateId = +geo[i].id;
+						var info = names.find((d) => d.id == stateId);
+						if (!!info) {
+							geo[i]["name"] = info.name;
+							geo[i]["code"] = info.code;
+						}
+					}
 
 					var svg = d3.select("svg"),
 				        width = +svg.attr("width"),
 				        height = +svg.attr("height");
 
-				    var projection = d3.geoConicEquidistant()
-				        .rotate([-105, 0])
-				        .center([-10, 65])
-				        .scale(width * 0.7)
-						.translate([width / 2, height / 2]);
+				    var projection = d3.geoIdentity().scale(0.5);
 
 					var calcPath = d3.geoPath().projection(projection);
 
@@ -45,22 +55,33 @@
 					var geoGrid = d3g.geoGrid()
 									  .width(width)
 									  .height(height)
-									  .spreadCoeff(1.5)
+									  .spreadCoeff(1.2)
 									  .projection(projection);
 
-					var data = geoGrid(geo);
+					var outline = topojson.merge(usa, usa.objects.states.geometries);
+					var data = geoGrid(geo, outline);
 
-					svg.append("g")
-							.attr("class", "grid-map")
-						.selectAll("circle")
-							.data(data).enter()
-                				.append("circle")
-									.attr("cx", (d) => d.center[0] + d.size / 2)
-									.attr("cy", (d) => d.center[1]- d.size / 2)
-									.attr("r", (d) => (d.size / 2))
+					var states = svg.append("g")
+										.attr("class", "grid-map")
+									.selectAll("g")
+										.data(data).enter()
+									.append("g")
+										.attr("transform", (d) => `translate(${d.center[0]}, ${d.center[1]})`);
+                	states
+                		.append("rect")
+							.attr("height", (d) => d.size)
+							.attr("width", (d) => d.size)
 									.style("fill", "green")
 									.style("fill-opacity", 0.7)
 									.style("stroke", "white");
+					states
+						.append("text")
+							.text((d) => d.data.code)
+							.attr("dy", (d) => d.size / 2 )
+							.attr("dx", (d) => d.size / 2 )
+							.style("text-anchor", "middle")
+							.style("fill", "white")
+							.style("font-family", "monospace")
 				});
 		</script>
 		

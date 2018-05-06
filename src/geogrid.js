@@ -39,20 +39,23 @@ export default function() {
 	let height = 100;	
 	let spreadCoeff = 1;
   
-  	function calculateGrid(source) {
+  	function calculateGrid(source, outline) {
   		const ratio = width / height;
   		const totalY = Math.ceil(Math.sqrt((source.length * spreadCoeff) / ratio));
   		const totalX = Math.ceil(totalY * ratio);
-  		const size = Math.round(height / totalY);
+  		const size = Math.round(height / (totalY  + 1));
+  		const offset = 0;
   		const grid = [];
   		for (let x = 0; x < totalX; x++) {
-  			for (let y = 0; y < totalX; y++) {
+  			for (let y = 0; y < totalY; y++) {
+  				const pos = [(x * size) - offset, (y * size) - offset];
   				grid.push({
-  					center: [(x * size), (y * size)],
+  					center: pos,
   					size: size
   				});
   			}
   		}
+  		console.log(grid.filter((d) => !d.inMap));
   		return grid;
   	}
 
@@ -69,10 +72,10 @@ export default function() {
 		return geo;
   	}
 
-	function geoGrid(source) {
+	function geoGrid(source, outline) {
 
 		const geo = calcGeoCenters(source);
-		const grid = calculateGrid(source);
+		const grid = calculateGrid(source, outline);
 		const matrix = getCostMatrix(geo, grid);
 		const result = computeMankres(matrix);
 		for (let i = 0; i < geo.length; i++) {
