@@ -1,1 +1,1 @@
-export { default as geogrid } from "./geogrid";
+export { default as geoGrid } from "./geogrid";

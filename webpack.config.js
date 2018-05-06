@@ -5,16 +5,20 @@
     entry: './src/index.js',
     output: {
         path: path.resolve(__dirname, 'build'),
-        filename: 'd3-geogrid.js',
-        library: 'd3',      
-        libraryTarget: 'umd',      
-        publicPath: '/build/',      
+        filename: 'd3-geogrid.js',          
+        publicPath: '/build/', 
+        library: "d3g",   
+        libraryTarget: 'umd',         
         umdNamedDefine: true  
+    },
+    externals: {
+        "d3": "d3",
+        "d3-geo": "d3-geo",
+        "topojson": "topojson"
     },
     resolve: {
         extensions: ['.js', '.jsx']
     },
-    devtool: 'inline-source-map',
     devServer: {
         inline: true,
         contentBase: './build',
