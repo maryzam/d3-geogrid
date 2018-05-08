@@ -61,14 +61,25 @@ export default function() {
   	function getGraph(topology, objects) {
 		const features = topojson.feature(topology, objects).features;
   		const neighbors = topojson.neighbors(objects.geometries);
-
+  		console.log(features, neighbors);
 		const nodes = features.map((d, i) => {
 			const center = path.centroid(d);
 			const bounds = path.bounds(d);
-			const result = { id: d.id, center: center, bounds: bounds };
-			result["x"] = center[0];
-			result["y"] = center[1];
+			const result = { 
+				id: d.id || i, 
+				center: center, 
+				properties: d.properties,
+				bounds: bounds 
+			};
+			//if (neighbors[i].length > 0) {
+				result["x"] = center[0];
+				result["y"] = center[1];
+			/*}	else {
+				result["fx"] = center[0];
+				result["fy"] = center[1];
+			}*/
 			return result
+		
 		});
 		
 		const linkDict = {};
