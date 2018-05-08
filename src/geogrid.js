@@ -19,7 +19,7 @@ function getCostMatrix(geo, grid) {
 		}
 		matrix.push(weights);
 	}
-	// hack to use hungarian algorithm 
+	//expand the matrix to use hungarian algorithm 
 	for (let i =0; i < (grid.length - geo.length); i++) {
 		const weights = [];
 		for (let j = 0; j < grid.length; j++) {
@@ -62,40 +62,36 @@ export default function() {
 		const features = topojson.feature(topology, objects).features;
   		const neighbors = topojson.neighbors(objects.geometries);
 
-		var nodes = features.map((d, i) => {
-			var center = path.centroid(d);
-			var bounds = path.bounds(d);
-			var result = { id: d.id, center: center, bounds: bounds };
-			//if (neighbors[i].length > 0) {
-				result["x"] = center[0];
-				result["y"] = center[1];
-			/*} else {
-				result["fx"] = center[0];
-				result["fy"] = center[1];
-			}*/
+		const nodes = features.map((d, i) => {
+			const center = path.centroid(d);
+			const bounds = path.bounds(d);
+			const result = { id: d.id, center: center, bounds: bounds };
+			result["x"] = center[0];
+			result["y"] = center[1];
 			return result
 		});
 		
-		var linkDict = {};
-		for (var i = 0; i < neighbors.length; i++) {
-			var current = neighbors[i];
-			for (var j = 0; j < current.length; j++) {
-				var link = [nodes[i].id, nodes[current[j]].id].sort().join("_");
+		const linkDict = {};
+		for (let i = 0; i < neighbors.length; i++) {
+			const current = neighbors[i];
+			for (let j = 0; j < current.length; j++) {
+				const link = [nodes[i].id, nodes[current[j]].id].sort().join("_");
 				linkDict[link] = link;
 			}
 		}
-		var links = Object.keys(linkDict).map((d) => { 
-				var s = d.split("_");
-				return { "source": s[0], "target": s[1] };
-		});
+		const links = Object
+						.keys(linkDict).map((d) => { 
+							const s = d.split("_");
+							return { "source": s[0], "target": s[1] };
+						});
 					
-		var simulation = d3.forceSimulation(nodes)
+		const simulation = d3.forceSimulation(nodes)
 						  .force('charge', d3.forceManyBody().strength(-1))
 						  .force('center', d3.forceCenter(width / 2, height / 2))
 						  .force('link', d3.forceLink().id(function(d) { return d.id; }).links(links))
 						  .stop();	
 
-		var totalTicks = Math.ceil(Math.log(simulation.alphaMin()) / Math.log(1 - simulation.alphaDecay()));
+		const totalTicks = Math.ceil(Math.log(simulation.alphaMin()) / Math.log(1 - simulation.alphaDecay()));
 		for (var i = 0; i < totalTicks; ++i) {
 			    simulation.tick();
 		};
