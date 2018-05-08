@@ -19,10 +19,12 @@
 					d3.tsv("data/us-state-names.tsv")
 				])
 				.then(function(source) {
-					var usa = source[0];
 					var names = source[1];
 
-					var geo = topojson.feature(usa, usa.objects.states).features;
+					var topology = source[0];
+					var objects = topology.objects.states;
+
+					var geo = topojson.feature(topology, objects).features;
 					for (var i = 0; i < geo.length; i++) {
 						var stateId = +geo[i].id;
 						var info = names.find((d) => d.id == stateId);
@@ -55,33 +57,53 @@
 					var geoGrid = d3g.geoGrid()
 									  .width(width)
 									  .height(height)
-									  .spreadCoeff(1.2)
+									  .spreadCoeff(1.5)
 									  .projection(projection);
 
-					var outline = topojson.merge(usa, usa.objects.states.geometries);
-					var data = geoGrid(geo, outline);
-
+					var data = geoGrid(topology, objects);
+					// render grid map
 					var states = svg.append("g")
 										.attr("class", "grid-map")
 									.selectAll("g")
-										.data(data).enter()
+										.data(data.res).enter()
 									.append("g")
-										.attr("transform", (d) => `translate(${d.center[0]}, ${d.center[1]})`);
+										.attr("transform", (d) => `translate(${d.center[0] }, ${d.center[1]})`);
                 	states
-                		.append("rect")
-							.attr("height", (d) => d.size)
-							.attr("width", (d) => d.size)
+                		.append("circle")
+							.attr("r", (d) => d.size / 2)
 									.style("fill", "green")
 									.style("fill-opacity", 0.7)
 									.style("stroke", "white");
 					states
 						.append("text")
-							.text((d) => d.data.code)
-							.attr("dy", (d) => d.size / 2 )
-							.attr("dx", (d) => d.size / 2 )
+							.text((d) => {
+								var info = names.find((n) => +d.id == +n.id);
+								return info.code;
+							})
 							.style("text-anchor", "middle")
 							.style("fill", "white")
 							.style("font-family", "monospace")
+
+					// render origin grid
+					svg.append("g")
+							.attr("class", "grid-map")
+						.selectAll("circle")
+						.data(data.grid).enter()
+						.append("circle")
+							.attr("cx", (x) => (x.center[0]))
+							.attr("cy", (x) => (x.center[1]))
+							.attr("r", (x) => (x.size/2))
+								.style("fill", "yellow")
+								.style("fill-opacity", 0.5);
+
+					// render forced graph
+					var graph = svg.append("g")
+										.attr("class", "grid-map")
+									.selectAll("g")
+										.data(data.res).enter()
+									.append("g")
+										.attr("transform", (d) => `translate(${d.center[0] }, ${d.center[1]})`);
+
 				});
 		</script>
 		

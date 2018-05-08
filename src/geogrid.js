@@ -2,8 +2,8 @@
 import { default as computeMankres } from './munkres.js';
 
 function calcSqrMagnitude(first, second) {
-	let dx = first.center[0] - second.center[0];
-	let dy = first.center[1] - second.center[1];
+	let dx = first[0] - second[0];
+	let dy = first[1] - second[1];
 	return (dy * dy + dx * dx);
 };
 
@@ -15,7 +15,7 @@ function getCostMatrix(geo, grid) {
 		for (let j = 0; j < grid.length; j++) 
 		{
 			const cell = grid[j];
-			weights.push(calcSqrMagnitude(item, cell));
+			weights.push(calcSqrMagnitude([item.x, item.y], cell.center));
 		}
 		matrix.push(weights);
 	}
@@ -34,55 +34,89 @@ export default function() {
 
 	const path = d3.geoPath();
 
-	let type = 'circle';
+	let type = 'rect';
 	let width = 150;
 	let height = 100;	
 	let spreadCoeff = 1;
   
-  	function calculateGrid(source, outline) {
+  	function calculateGrid(source) {
   		const ratio = width / height;
   		const totalY = Math.ceil(Math.sqrt((source.length * spreadCoeff) / ratio));
   		const totalX = Math.ceil(totalY * ratio);
   		const size = Math.round(height / (totalY  + 1));
-  		const offset = 0;
+  		const offset = size / 2;
   		const grid = [];
   		for (let x = 0; x < totalX; x++) {
   			for (let y = 0; y < totalY; y++) {
-  				const pos = [(x * size) - offset, (y * size) - offset];
+  				const center = [(x * size) + offset, (y * size) + offset];
   				grid.push({
-  					center: pos,
-  					size: size
+  					center: center,
+  					size: size,
   				});
   			}
   		}
-  		console.log(grid.filter((d) => !d.inMap));
   		return grid;
   	}
 
-  	function calcGeoCenters(source) {
-  		const geo = [];
-		for (let i = 0; i < source.length; i++) {
-			const item = source[i];
-			const center = path.centroid(item);
-			geo.push({
-				data: item,
-				center: center
-			});
+  	function getGraph(topology, objects) {
+		const features = topojson.feature(topology, objects).features;
+  		const neighbors = topojson.neighbors(objects.geometries);
+
+		var nodes = features.map((d, i) => {
+			var center = path.centroid(d);
+			var bounds = path.bounds(d);
+			var result = { id: d.id, center: center, bounds: bounds };
+			//if (neighbors[i].length > 0) {
+				result["x"] = center[0];
+				result["y"] = center[1];
+			/*} else {
+				result["fx"] = center[0];
+				result["fy"] = center[1];
+			}*/
+			return result
+		});
+		
+		var linkDict = {};
+		for (var i = 0; i < neighbors.length; i++) {
+			var current = neighbors[i];
+			for (var j = 0; j < current.length; j++) {
+				var link = [nodes[i].id, nodes[current[j]].id].sort().join("_");
+				linkDict[link] = link;
+			}
 		}
-		return geo;
+		var links = Object.keys(linkDict).map((d) => { 
+				var s = d.split("_");
+				return { "source": s[0], "target": s[1] };
+		});
+					
+		var simulation = d3.forceSimulation(nodes)
+						  .force('charge', d3.forceManyBody().strength(-1))
+						  .force('center', d3.forceCenter(width / 2, height / 2))
+						  .force('link', d3.forceLink().id(function(d) { return d.id; }).links(links))
+						  .stop();	
+
+		var totalTicks = Math.ceil(Math.log(simulation.alphaMin()) / Math.log(1 - simulation.alphaDecay()));
+		for (var i = 0; i < totalTicks; ++i) {
+			    simulation.tick();
+		};
+		return nodes;
   	}
+  	
+	function geoGrid(topology, objects) {
 
-	function geoGrid(source, outline) {
-
-		const geo = calcGeoCenters(source);
-		const grid = calculateGrid(source, outline);
-		const matrix = getCostMatrix(geo, grid);
+		const graph =getGraph(topology, objects);
+		const grid = calculateGrid(objects.geometries);
+		const matrix = getCostMatrix(graph, grid);
 		const result = computeMankres(matrix);
-		for (let i = 0; i < geo.length; i++) {
+		const res = graph.map((d, i) => {
 			const best = result[i];
-			Object.assign(geo[best[0]], grid[best[1]]);
+			return Object.assign({}, graph[best[0]], grid[best[1]]);
+		});
+		return { 
+			graph,
+			grid,
+			res
 		}
-		return geo;
 	}
 
 	geoGrid.projection = function(_) {
@@ -114,7 +148,6 @@ export default function() {
 					(spreadCoeff = _, geoGrid) :
 					 spreadCoeff;
 	}
-
 
 	return geoGrid;
 };
