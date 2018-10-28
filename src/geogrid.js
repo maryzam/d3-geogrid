@@ -30,16 +30,24 @@ function getCostMatrix(geo, grid) {
 	return matrix;	
 };
 
+function simplifyGeometies(objects) {
+	const total = objects.geometries.length;
+	for (let i = 0; i < total; i++) {
+		const item = objects.geometries[i];
+		console.log(item);
+	}
+}
+
 export default function() {
 
 	const path = d3.geoPath();
 
 	let type = 'rect';
 	let width = 150;
-	let height = 100;	
+	let height = 100;
 	let spreadCoeff = 1;
   
-  	function calculateGrid(source) {
+  	function calculateGrid(source, radius) {
   		const ratio = width / height;
   		const totalY = Math.ceil(Math.sqrt((source.length * spreadCoeff) / ratio));
   		const totalX = Math.ceil(totalY * ratio);
@@ -58,10 +66,10 @@ export default function() {
   		return grid;
   	}
 
-  	function getGraph(topology, objects) {
-		const features = topojson.feature(topology, objects).features;
+  	function getGraph(topology, objects, radius) {
   		const neighbors = topojson.neighbors(objects.geometries);
-  		console.log(features, neighbors);
+		const features = topojson.feature(topology, objects).features;
+
 		const nodes = features.map((d, i) => {
 			const center = path.centroid(d);
 			const bounds = path.bounds(d);
@@ -81,7 +89,7 @@ export default function() {
 			return result
 		
 		});
-		
+
 		const linkDict = {};
 		for (let i = 0; i < neighbors.length; i++) {
 			const current = neighbors[i];
@@ -98,7 +106,10 @@ export default function() {
 					
 		const simulation = d3.forceSimulation(nodes)
 						  .force('charge', d3.forceManyBody().strength(-1))
+						  //.force('collision', d3.forceCollide().radius(radius))
 						  .force('center', d3.forceCenter(width / 2, height / 2))
+						  //.force('x', d3.forceX((d) => width / 2))
+						  //.force('y', d3.forceY((d) => height / 2))
 						  .force('link', d3.forceLink().id(function(d) { return d.id; }).links(links))
 						  .stop();	
 
@@ -110,9 +121,9 @@ export default function() {
   	}
   	
 	function geoGrid(topology, objects) {
-
-		const graph =getGraph(topology, objects);
 		const grid = calculateGrid(objects.geometries);
+		const graph =getGraph(topology, objects, (grid[0].size / 2));
+
 		const matrix = getCostMatrix(graph, grid);
 		const result = computeMankres(matrix);
 		const res = graph.map((d, i) => {
